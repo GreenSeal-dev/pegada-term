@@ -97,7 +97,8 @@ class Sandbox:
 
     def pids(self, pattern):
         """Pids of this sandbox's processes whose command line matches."""
-        out = subprocess.run(["ps", "-axo", "pid=,command="], capture_output=True, text=True).stdout
+        # ww: Linux ps cuts lines at 80 columns otherwise.
+        out = subprocess.run(["ps", "-axww", "-o", "pid=,command="], capture_output=True, text=True).stdout
         found = []
         for line in out.splitlines():
             pid, _, cmd = line.strip().partition(" ")
@@ -120,6 +121,14 @@ class Sandbox:
     def sensors(self):
         return self.pids("mock-energibridge -i")
 
+    def describe(self):
+        """What is left of this sandbox, for assertion messages."""
+        ps = subprocess.run(["ps", "-axww", "-o", "pid=,ppid=,stat=,command="], capture_output=True, text=True).stdout
+        mine = [l for l in ps.splitlines() if "pegada-term" in l or "mock-energibridge" in l or "sh" in l.split()[-1:]]
+        sessions = self.runtime / "sessions"
+        files = sorted(f"{p.name}:{p.stat().st_size}" for p in sessions.iterdir()) if sessions.is_dir() else []
+        return "sessions: %s\n%s" % (files, "\n".join(mine))
+
     def read_state(self):
         try:
             return (self.runtime / "state").read_text().split("\n")[0].split(" ")
@@ -127,8 +136,9 @@ class Sandbox:
             return None
 
     def wait_for(self, predicate, timeout=20.0, step=0.2):
-        deadline = time.time() + timeout
-        while time.time() < deadline:
+        # Monotonic: the wall clock of a VM can jump.
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
             if predicate():
                 return True
             time.sleep(step)

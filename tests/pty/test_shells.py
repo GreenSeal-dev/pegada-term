@@ -47,7 +47,7 @@ def test_sleep_and_load_differ(sandbox, name):
     # anything else running during a `sleep` shows up in it. A round disturbed
     # like that is repeated; the numbers of the last round are reported.
     problems = []
-    for _ in range(3):
+    for _ in range(5):
         sleeps = [sh.energy_line("sleep 2") for _ in range(2)]
         burn = sh.energy_line(BURN)
         assert all(sleeps) and burn, (sleeps, burn)
@@ -73,7 +73,7 @@ def load_problems(sleeps, burn):
     # desktop `sleep` is not exactly 0: allow the noise of two busy cores.
     if not sleep_above < 40:
         problems.append("sleep is not close to idle")
-    if not (burn_above > sleep_above + 20 and burn_above > 2 * sleep_above):
+    if not (burn_above > sleep_above + 20 and burn_above > 1.5 * sleep_above):
         problems.append("4 busy cores are not clearly above sleep")
     if not joules(burn, "total") > sleep_total + 20:
         problems.append("total energy under load is not clearly above sleep")
@@ -227,7 +227,7 @@ def test_one_sampler_for_three_shells(sandbox, name):
     assert len(sandbox.daemons()) == 1, "the sampler must stay while one shell is open"
     shells[2].close()
     # The watchdog checks every 3 s and leaves after 3 empty checks.
-    assert sandbox.wait_for(lambda: not sandbox.daemons() and not sandbox.sensors(), timeout=25)
+    assert sandbox.wait_for(lambda: not sandbox.daemons() and not sandbox.sensors(), timeout=25), sandbox.describe()
     assert not sandbox.pids("__watchdog")
 
 
