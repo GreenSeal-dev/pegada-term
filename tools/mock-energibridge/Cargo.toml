@@ -1,0 +1,9 @@
+[package]
+name = "mock-energibridge"
+version = "0.0.0"
+edition = "2021"
+publish = false
+description = "Test stand-in for EnergiBridge: same CLI and CSV format, power follows real CPU load."
+
+[dependencies]
+libc = "0.2"

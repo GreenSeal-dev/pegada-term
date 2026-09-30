@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: Install shells and shellcheck
+        run: sudo apt-get update && sudo apt-get install -y zsh fish shellcheck
+      - name: shellcheck (installer, bash hook, scripts)
+        run: shellcheck install.sh hooks/pegada-term.bash bench/*.sh tests/*.sh
+      - name: Syntax of the zsh and fish hooks
+        run: |
+          zsh -n hooks/pegada-term.zsh
+          fish -n hooks/pegada-term.fish
+
+  test:
+    name: test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --workspace
+      - run: cargo build --release --workspace
+      - name: Install shells (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y zsh fish
+      - name: Install shells (macOS)
+        if: runner.os == 'macOS'
+        run: brew install fish bash
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pytest pexpect
+      - name: PTY tests (zsh, bash, fish against mock-energibridge)
+        run: python -m pytest tests/pty -v
+      - name: Installer round trip
+        run: tests/install_test.sh
