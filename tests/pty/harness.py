@@ -15,7 +15,7 @@ TARGET = Path(os.environ.get("PEGADA_TERM_TARGET_DIR", ROOT / "target" / "releas
 BIN = TARGET / "pegada-term"
 MOCK = TARGET / "mock-energibridge"
 PROMPT = "PROMPT> "
-ANSI = re.compile(r"\x1b\[[0-9;?<=>]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[=>]|\x1bP.*?\x1b\\")
+ANSI = re.compile(r"\x1b\[[0-9;?<=>]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[=>]|\x1b[()][0-9A-Za-z]|\x1bP.*?\x1b\\")
 
 # bash 3.2 (macOS /bin/bash) and bash 5 take different code paths for the clock.
 SHELLS = {
@@ -107,6 +107,10 @@ class Sandbox:
         return found
 
     def owns(self, pid):
+        try:
+            return str(self.runtime).encode() in Path(f"/proc/{pid}/environ").read_bytes()
+        except OSError:
+            pass  # no /proc (macOS), or the process is gone
         env = subprocess.run(["ps", "eww", "-o", "command=", "-p", str(pid)], capture_output=True, text=True).stdout
         return str(self.runtime) in env
 
@@ -162,7 +166,9 @@ class Shell:
         env = dict(sandbox.env, PEGADA_TERM_NO_FD="1") if name.endswith("-nofd") else sandbox.env
         path = SHELLS[name]
         args = {
-            "zsh": ["-i"],
+            # -d: no global rc files. Ubuntu's /etc/zsh/zshrc runs compinit, which stops to ask
+            # about insecure directories.
+            "zsh": ["-d", "-i"],
             "bash": ["--noprofile", "--rcfile", str(sandbox.dir / ".bashrc"), "-i"],
             "fish": ["-i"],
         }[self.kind]

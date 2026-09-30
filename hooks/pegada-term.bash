@@ -448,7 +448,7 @@ if [[ $- == *i* ]]; then
     }
     # Keep a DEBUG trap that was already there.
     __pegada_term_prev_debug=
-    # shellcheck disable=SC2329
+    # shellcheck disable=SC2317,SC2329
     __pegada_term_get_trap() { __pegada_term_prev_debug=${3-}; }
     eval "__pegada_term_get_trap $(trap -p DEBUG)"
     unset -f __pegada_term_get_trap

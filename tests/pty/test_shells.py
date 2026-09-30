@@ -257,7 +257,9 @@ def test_restart_by_hook_when_daemon_is_gone(sandbox, name):
     (daemon,) = sandbox.daemons()
     os.kill(daemon, 9)
     assert sandbox.wait_for(lambda: not sandbox.sensors(), timeout=10)
-    time.sleep(4.5)  # let the state file go stale
+    # Let the state file go stale. fish only has a whole-second clock for this,
+    # so it needs up to a second more than the others.
+    time.sleep(6)
     sh.run("true")  # the hook notices and starts a new sampler
     sh.run("true")
     assert sandbox.wait_for(lambda: len(sandbox.daemons()) == 1, timeout=10)

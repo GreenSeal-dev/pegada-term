@@ -180,7 +180,8 @@ function __pegada_term_spark -a dur color utf8
     set -l out ''
     for v in $vals
         set -l level (math -s0 "($v - $base) * 8 / ($top - $base)")
-        test $level -lt 0; and set level 0
+        # -le, not -lt: older fish prints a small negative result as "-0".
+        test $level -le 0; and set level 0
         test $level -gt 7; and set level 7
         set -l ch
         # `switch`, not string slicing: safe whatever the locale does to multibyte characters.
