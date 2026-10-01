@@ -1,5 +1,7 @@
 # pegada-term
 
+[![AI coding CO2e: 0.0785–3.02 kg](https://img.shields.io/badge/AI%20coding%20CO2e-0.0785%E2%80%933.02%20kg-4c8c4a)](https://github.com/GreenSeal-dev/pegada-code/blob/main/METHODOLOGY.md)
+
 **See the energy used by every command you run in the terminal.**
 
 ![pegada-term in zsh: an energy line after each command](docs/demo.gif)
