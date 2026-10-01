@@ -88,9 +88,18 @@ Read this before quoting a number.
   charged to whatever you run next. Numbers for commands over about 10 s are little affected; for
   shorter ones, treat them as rough. RAPL on Linux does not have this lag.
 - **Interpolation.** Energy at the start and end of a command is
-  `E(sample) + P(sample) × (t − t_sample)`, capped at two sample intervals.
+  `E(sample) + P(sample) × (t − t_sample)`, capped at two sample intervals. This assumes power
+  has not changed since the last sample. When a command starts within about one interval of a
+  heavy one ending, before the sampler has seen the drop, that is wrong: the start is estimated
+  too high and the command is undercounted by up to `(P_heavy − P_now) ×` one interval (two at
+  most), for example up to 20 J after a 45 W → 5 W drop at the default 500 ms. The missing energy
+  is charged to the time at the prompt, not to any command. It needs commands in quick
+  succession (typed-ahead input, a fast up-arrow and Enter); at typing speed a fresh sample is
+  there first, and `a; b` on one line counts as one command.
 - **fish** has no millisecond clock, so there the energy is `$CMD_DURATION ×` the average power
-  between the sampler's state at the start and at the end of the command.
+  between the sampler's state at the start and at the end of the command. In the same quick
+  succession, that average still includes part of the heavy command, so fish errs the other way
+  and overcounts.
 - **Gaps are not integrated.** If the machine sleeps mid-command, the time asleep counts in the
   duration but adds no energy.
 - **gCO₂** in `stats` is `energy × PEGADA_TERM_CARBON_INTENSITY`, 250 gCO₂/kWh unless you set it.
