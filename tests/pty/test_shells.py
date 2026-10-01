@@ -49,6 +49,10 @@ def test_sleep_and_load_differ(sandbox, name):
     # of the last round are reported.
     problems = []
     for _ in range(3):
+        # The hooks extrapolate from the last sample for up to two intervals, so a
+        # command that starts right after the load stops inherits some of it. Give
+        # the sampler time to see the drop before the next round's sleeps.
+        time.sleep(1)
         sleeps = [sh.energy_line("sleep 2") for _ in range(2)]
         burn = sh.energy_line(BURN)
         assert all(sleeps) and burn, (sleeps, burn)
@@ -61,8 +65,9 @@ def test_sleep_and_load_differ(sandbox, name):
 
 def load_problems(sleeps, burn):
     problems = []
-    # 2 s cost at least 10 J, and at most what every core flat out would cost.
-    ceiling = (5 + 10 * os.cpu_count()) * 2.6
+    # 2 s cost at least 10 J, and at most 5 W + 10 W for each of BURN's 4 cores
+    # (the mock counts the cores --burn announces, even on a smaller machine).
+    ceiling = (5 + 10 * 4) * 2.6
     for line in sleeps + [burn]:
         if not 8 <= joules(line, "total") <= ceiling:
             problems.append(f"implausible total: {line}")
