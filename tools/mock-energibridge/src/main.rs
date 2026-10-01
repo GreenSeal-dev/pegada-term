@@ -12,6 +12,11 @@
 //!   `fail`  exits with an error before printing anything, like a missing MSR
 //!
 //! `--burn <seconds> <threads>` is a self-terminating CPU load for the tests.
+//!
+//! With `MOCK_EB_LOAD_FILE` set, the load comes from that file instead of the
+//! machine: `--burn` writes its thread count there while it runs, and the
+//! sensor reads it as the number of busy cores. Tests on shared CI machines
+//! use this, so other jobs' load does not show up in their numbers.
 
 use std::io::Write;
 use std::process::{exit, Command};
@@ -73,8 +78,19 @@ fn epoch_ms() -> u128 {
         .map_or(0, |d| d.as_millis())
 }
 
+/// Busy cores announced by `--burn` in `MOCK_EB_LOAD_FILE`, if that is set.
+fn announced_load() -> Option<f64> {
+    let path = std::env::var_os("MOCK_EB_LOAD_FILE")?;
+    let text = std::fs::read_to_string(path).unwrap_or_default();
+    Some(text.trim().parse().unwrap_or(0.0))
+}
+
 /// Keeps `threads` cores busy for `seconds`, then stops on its own.
 fn burn(seconds: f64, threads: usize) {
+    let announce = std::env::var_os("MOCK_EB_LOAD_FILE");
+    if let Some(path) = &announce {
+        let _ = std::fs::write(path, threads.to_string());
+    }
     let until = Instant::now() + Duration::from_secs_f64(seconds);
     let workers: Vec<_> = (0..threads)
         .map(|_| {
@@ -92,6 +108,9 @@ fn burn(seconds: f64, threads: usize) {
         .collect();
     for w in workers {
         let _ = w.join();
+    }
+    if let Some(path) = &announce {
+        let _ = std::fs::remove_file(path);
     }
 }
 
@@ -168,7 +187,9 @@ fn main() {
         let delta_ms = clock.elapsed().as_millis();
         if !first {
             let (busy, total, _) = cpu_ticks();
-            if total > total_before {
+            if let Some(busy_cores) = announced_load() {
+                watts = IDLE_W + CORE_W * busy_cores;
+            } else if total > total_before {
                 let load = (busy - busy_before) as f64 / (total - total_before) as f64;
                 watts = IDLE_W + CORE_W * cores * load;
             }

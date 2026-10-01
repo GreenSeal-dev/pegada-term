@@ -85,6 +85,14 @@ detect_target() {
   OS=$os
 }
 
+# Installs an executable by copying it next to its destination and renaming:
+# overwriting in place fails ("text file busy") while the sampler runs it.
+place() {
+  cp "$1" "$2.new"
+  chmod 755 "$2.new"
+  mv -f "$2.new" "$2"
+}
+
 install_pegada_term() {
   tag=${PEGADA_TERM_VERSION:-$(latest_tag "$BASE_URL" "$FALLBACK_TAG")}
   archive="pegada-term-$tag-$TARGET.tar.gz"
@@ -93,16 +101,13 @@ install_pegada_term() {
   if fetch "$BASE_URL/releases/download/$tag/$archive" "$TMP/$archive" 2>/dev/null; then
     tar -xzf "$TMP/$archive" -C "$TMP"
     [ -f "$TMP/pegada-term" ] || die "the release archive does not contain pegada-term"
-    # Copy to a temporary name and rename: safe while an older version is running.
-    cp "$TMP/pegada-term" "$BIN_DIR/.pegada-term.new"
-    chmod 755 "$BIN_DIR/.pegada-term.new"
-    mv -f "$BIN_DIR/.pegada-term.new" "$BIN_DIR/pegada-term"
+    place "$TMP/pegada-term" "$BIN_DIR/pegada-term"
   elif have cargo; then
     warn "no prebuilt binary for $TARGET at $tag; building with cargo"
     cargo install pegada-term --root "$TMP/cargo" --quiet ||
       cargo install --git "https://github.com/$REPO" --root "$TMP/cargo" --quiet ||
       die "cargo could not build pegada-term"
-    cp "$TMP/cargo/bin/pegada-term" "$BIN_DIR/pegada-term"
+    place "$TMP/cargo/bin/pegada-term" "$BIN_DIR/pegada-term"
   else
     die "could not download $archive, and cargo is not installed to build from source"
   fi
@@ -137,8 +142,7 @@ install_energibridge() {
       tar -xzf "$TMP/$archive" -C "$TMP/eb"
       found=$(find "$TMP/eb" -type f -name energibridge | head -n 1)
       [ -n "$found" ] || die "the EnergiBridge archive does not contain the binary"
-      cp "$found" "$DATA_DIR/energibridge"
-      chmod 755 "$DATA_DIR/energibridge"
+      place "$found" "$DATA_DIR/energibridge"
       ENERGIBRIDGE="$DATA_DIR/energibridge"
       ;;
     *)
@@ -147,7 +151,7 @@ install_energibridge() {
         step "No EnergiBridge release for $TARGET; building it with cargo (this takes a while)"
         mkdir -p "$DATA_DIR"
         if cargo install --git "https://github.com/$EB_REPO" --root "$TMP/ebcargo" --quiet; then
-          cp "$TMP/ebcargo/bin/energibridge" "$DATA_DIR/energibridge"
+          place "$TMP/ebcargo/bin/energibridge" "$DATA_DIR/energibridge"
           ENERGIBRIDGE="$DATA_DIR/energibridge"
         else
           warn "cargo could not build EnergiBridge"

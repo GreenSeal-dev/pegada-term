@@ -71,6 +71,8 @@ class Sandbox:
             "PEGADA_TERM_ENERGIBRIDGE": str(MOCK),
             "PEGADA_TERM_INTERVAL": str(interval),
             "MOCK_EB_MODE": mode,
+            # The mock reports the test's own --burn load, not the whole machine's.
+            "MOCK_EB_LOAD_FILE": str(self.dir / "mock-load"),
         }
         self.env.update(extra_env or {})
         (self.dir / ".zshrc").write_text(

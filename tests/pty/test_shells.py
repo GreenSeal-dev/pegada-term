@@ -43,11 +43,12 @@ def raw_energy_line(sh, command):
 def test_sleep_and_load_differ(sandbox, name):
     sh = ready(sandbox, name)
     time.sleep(3)  # let the idle baseline settle
-    # The mock's power is 5 W + 10 W per busy core of the *whole machine*, so
-    # anything else running during a `sleep` shows up in it. A round disturbed
-    # like that is repeated; the numbers of the last round are reported.
+    # The mock's power is 5 W + 10 W per core that `--burn` says it keeps busy
+    # (MOCK_EB_LOAD_FILE), so other load on the machine does not count. Rounds
+    # are still repeated in case a slow machine delays the sampler; the numbers
+    # of the last round are reported.
     problems = []
-    for _ in range(5):
+    for _ in range(3):
         sleeps = [sh.energy_line("sleep 2") for _ in range(2)]
         burn = sh.energy_line(BURN)
         assert all(sleeps) and burn, (sleeps, burn)
@@ -73,7 +74,7 @@ def load_problems(sleeps, burn):
     # desktop `sleep` is not exactly 0: allow the noise of two busy cores.
     if not sleep_above < 40:
         problems.append("sleep is not close to idle")
-    if not (burn_above > sleep_above + 20 and burn_above > 1.5 * sleep_above):
+    if not (burn_above > sleep_above + 20 and burn_above > 2 * sleep_above):
         problems.append("4 busy cores are not clearly above sleep")
     if not joules(burn, "total") > sleep_total + 20:
         problems.append("total energy under load is not clearly above sleep")
