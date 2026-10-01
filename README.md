@@ -316,9 +316,14 @@ sudo bench/ab_idle.sh                 # idle power with the sampler on vs off
 
 `tools/mock-energibridge` stands in for EnergiBridge in the tests. It has the same CLI and CSV
 format, with power derived from the machine's real CPU load (`5 W + 10 W × busy cores`), and
-`MOCK_EB_MODE` selects `rapl`, `amd`, `watts`, `wrap` (a counter about to wrap) or `fail`.
+`MOCK_EB_MODE` selects `rapl`, `amd`, `watts`, `wrap` (a counter about to wrap) or `fail`. With
+`MOCK_EB_LOAD_FILE` set, power follows only the load that `--burn` announces, which keeps the PTY
+tests independent of other load on a shared CI machine.
 
-`upstream/` holds a small fix for EnergiBridge's sleep underflow, ready to submit.
+EnergiBridge used to abort a measurement when one sample took longer than the interval; that is
+fixed upstream in [tdurieux/EnergiBridge#23](https://github.com/tdurieux/EnergiBridge/pull/23).
+The installer pins EnergiBridge v0.0.7, which predates the fix, so the sampler's restart-on-crash
+still matters until a newer EnergiBridge release is out.
 
 Not done yet: a Homebrew tap, a PowerShell hook for native Windows, and the v2 sensor.
 
